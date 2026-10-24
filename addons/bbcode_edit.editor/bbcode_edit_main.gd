@@ -54,7 +54,7 @@ func _on_editor_startup() -> void:
 	started_up = true
 
 	# TODO check if InputMap.load_from_project_settings() is better
-	# 不用 load_from_project_settings()，它会清空 InputMap 中其他插件动态添加的动作。
+	# Do not use load_from_project_settings(): it clears the entire InputMap, including actions dynamically added by other plugins.
 	for setting in ACTION_SETTINGS:
 		if not ProjectSettings.has_setting(setting):
 			continue

@@ -755,7 +755,7 @@ func _confirm_code_completion(replace: bool = false) -> void:
 	var selected_completion: Dictionary = get_code_completion_option(get_code_completion_selected_index())
 	var display_text: String = selected_completion["display_text"]
 	var insert_text: String = selected_completion["insert_text"]
-	# 判断补全类型
+	# Determine the completion kind
 	var icon: Texture2D = selected_completion["icon"]
 	var suffix: String = display_text[-1] if display_text.length() > 0 else ""
 	var prefix_char: String = display_text[0] if display_text.length() > 0 else ""
@@ -771,7 +771,7 @@ func _confirm_code_completion(replace: bool = false) -> void:
 		CompletionKind.IGNORE
 	)
 
-	# 处理特殊命令
+	# Handle special commands
 	if display_text.begins_with(COMMAND_PREFIX_CHAR):
 		var parts: PackedStringArray = insert_text.split(",")
 		var chars_to_remove: int = int(parts[1]) if parts.size() >= 2 else 0
@@ -808,10 +808,10 @@ func _confirm_code_completion(replace: bool = false) -> void:
 		var line: String = get_line(line_i)
 		var column_i: int = get_caret_column(caret)
 
-		# 计算要插入的文本（去除特殊标记）
+		# Compute the text to insert (strip special markers)
 		var cleaned_insert_text: String = insert_text.replace("|", "")
 
-		# 查找要替换的前缀
+		# Find the prefix to replace
 		var prefix_start: int = column_i
 		while prefix_start > 0:
 			var prev_char: String = line[prefix_start - 1]
@@ -820,22 +820,22 @@ func _confirm_code_completion(replace: bool = false) -> void:
 			else:
 				break
 
-		# 计算要删除的前缀长度
+		# Compute the length of the prefix to delete
 		var chars_to_delete_left: int = column_i - prefix_start
 
-		# 删除匹配的部分
+		# Delete the matched part
 		if chars_to_delete_left > 0:
-			# 删除左侧匹配的部分
+			# Delete the matched part on the left
 			line = line.left(prefix_start) + line.substr(column_i)
 			set_line(line_i, line)
-			# 更新列位置
+			# Update the column position
 			column_i = prefix_start
 			set_caret_column(column_i, false, caret)
 
-		# 处理右侧匹配：检查光标右侧是否已经有部分匹配的文本
+		# Handle right-side matching: check whether the text right of the caret already partially matches
 		var chars_to_delete_right: int = 0
 		if column_i < line.length():
-			# 比较光标右侧的文本与插入文本
+			# Compare the text right of the caret against the insert text
 			var i: int = 0
 			while column_i + i < line.length() and not line[column_i + i] in "+-*/^&|:;,./?~`%$#@=><{[()]} " and not line[column_i + i] in '"':
 				i += 1
@@ -850,31 +850,31 @@ func _confirm_code_completion(replace: bool = false) -> void:
 			if i == 0:
 				chars_to_delete_right = max_length
 
-		# 删除匹配的部分
-		# 计算要删除的后缀长度
+		# Delete the matched part
+		# Compute the length of the suffix to delete
 		if chars_to_delete_right > 0:
-			# 删除右侧匹配的部分
+			# Delete the matched part on the right
 			line = line.left(column_i) + line.substr(column_i + chars_to_delete_right)
 			set_line(line_i, line)
-			# 更新列位置
+			# Update the column position
 			column_i = prefix_start
 			set_caret_column(column_i, false, caret)
 
 		if cleaned_insert_text.ends_with("(") and is_in_comment(line_i, column_i) == -1:
 			cleaned_insert_text += ")"
 
-		# 插入处理后的补全文本
+		# Insert the processed completion text
 		insert_text_at_caret(cleaned_insert_text, caret)
 
-		# 获取插入后的新行和列位置
+		# Get the new line and column after insertion
 		var new_line: String = get_line(line_i)
 		var new_column_i: int = get_caret_column(caret)
 
-		# 清理特殊字符
+		# Clean up special characters
 		var cleaned_line: String = ""
 		var column_offset: int = 0
 
-		# 定义特殊字符的集合
+		# Define the set of special characters
 		var special_chars: Array[String] = [
 			COMMAND_PREFIX_CHAR,
 			ORDER_PREFIX,
@@ -884,40 +884,40 @@ func _confirm_code_completion(replace: bool = false) -> void:
 			ANNOTATION_SUFFIX_CHAR
 		]
 
-		# 遍历原始行的每个字符
+		# Iterate over each character of the original line
 		for i in range(new_line.length()):
 			var ch: String = new_line[i]
 			if ch in special_chars:
-				# 如果这个特殊字符在当前列索引之前，那么列索引需要减1
+				# If this special character is before the current column index, decrement the column index
 				if i < new_column_i:
 					column_offset += 1
-				# 不将这个特殊字符添加到新字符串中
+				# Do not add this special character to the new string
 			else:
 				cleaned_line += ch
 
-		# 计算新的列索引
+		# Compute the new column index
 		var cleaned_column: int = new_column_i - column_offset
 
-		# 确保列索引不超过新字符串的长度
+		# Ensure the column index does not exceed the new string length
 		if cleaned_column > cleaned_line.length():
 			cleaned_column = cleaned_line.length()
 
-		# 确保列索引不小于0
+		# Ensure the column index is not less than 0
 		if cleaned_column < 0:
 			cleaned_column = 0
 
-		# 更新行
+		# Update the line
 		set_line(line_i, cleaned_line)
 		set_caret_column(cleaned_column, false, caret)
 
-		# 检查当前光标右侧是否已有"]"
+		# Check whether there is already a "]" right of the caret
 		var current_line: String = get_line(line_i)
 		var current_column: int = get_caret_column(caret)
 		var char_at_cursor: String = ""
 		if current_column < current_line.length():
 			char_at_cursor = current_line[current_column]
 
-		# 对于格式化标签和引用标签，自动添加关闭括号
+		# For formatting tags and reference tags, automatically add the closing bracket
 		if (
 			kind == CompletionKind.FORMATTING
 			or kind == CompletionKind.CLASS_REFERENCE
@@ -925,19 +925,19 @@ func _confirm_code_completion(replace: bool = false) -> void:
 		):
 			if char_at_cursor != "]":
 				insert_text_at_caret("]", caret)
-				# 将光标移回括号内
+				# Move the caret back inside the brackets
 				set_caret_column(current_column, false, caret)
 
-		# 对于信号和方法补全，确保光标在括号内
+		# For signal and method completions, ensure the caret is inside the parentheses
 		elif cleaned_insert_text.ends_with("()"):
-			# 将光标移动到括号之间
+			# Move the caret between the parentheses
 			set_caret_column(current_column - 1, false, caret)
 
-		# 对于颜色补全，移动光标到颜色值后面
+		# For color completions, move the caret past the color value
 		elif kind == CompletionKind.COLOR:
 			set_caret_column(get_caret_column(caret) + 1, false, caret)
 
-		# 对于引用标签，需要再次触发补全
+		# For reference tags, trigger completion again
 		if kind == CompletionKind.REFERENCING_TAG:
 			var prefixes := code_completion_prefixes
 			code_completion_prefixes += [" "]
